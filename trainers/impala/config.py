@@ -2,7 +2,7 @@ from dataclasses import dataclass
 
 @dataclass
 class ImpalaConfig:
-    unroll_legnth: int = 80
+    unroll_length: int = 80
     batch_size: int = 4 #how many rollouts per learner step
     discount: float = .99 #v-trace value function discount 
     clip_rho_threshold: float = 1.0

@@ -16,7 +16,7 @@ class Learner:
         self.learner_steps = 0
     
     def step(self):
-        rollouts = [self.queue.get(timeout=5.0) 
+        rollouts = [self.queue.get() 
                     for _ in range(self.config.batch_size)]
         batch = collate_rollout(rollouts).to(th.device(self.config.learner_device))
 
@@ -39,7 +39,8 @@ class Learner:
 
         baseline_loss = 0.5 * (values - vtrace.vs).pow(2).mean()
 
-        entropy = -(th.exp(target_log_probs) * target_log_probs).mean()
+        entropy = self.policy.entropy(logits).mean()
+       
 
         loss = pg_loss + self.config.value_coef * baseline_loss - self.config.entropy_coef * entropy
 
@@ -55,7 +56,6 @@ class Learner:
             value_loss=baseline_loss.item(),
             entropy=entropy.item()
         ))
-
 
 
 

@@ -4,7 +4,7 @@ import torch as th
 from trainers.impala.storage import ActorRollout
 from trainers.impala.config import ImpalaConfig
 
-class ActorWorker(threading.thread):
+class ActorWorker(threading.Thread):
     def __init__(self, actor_id, env_fn, policy_fn, param_server, 
                  queue: Queue, config: ImpalaConfig):
         super().__init__(daemon=True)
@@ -19,14 +19,14 @@ class ActorWorker(threading.thread):
         self.env_steps = 0
     
     def run(self):
-        obs = self.env.rest()
-        obs = th.as_tensor(obs, device=self.policy.device).unsqueeze(0)
+        obs = self.env.reset()
+        obs = th.as_tensor(obs, device=self.config.actor_device).unsqueeze(0)
 
         while not self.shutdown.is_set():
-            if self.steps_since_refresh >= self.config.refresh_interval:
-                version, weights = self.param_server.get()
-                self.policy.load_state_dict(weights, strict=False)
-                self.steps_since_refresh = 0
+            # if self.steps_since_refresh >= self.config.refresh_interval:
+            version, weights = self.param_server.get()
+            self.policy.load_state_dict(weights, strict=False)
+            self.steps_since_refresh = 0
             rollout = self.collect_rollout(obs)
             try:
                 self.queue.put(rollout, timeout=1.0)
@@ -47,17 +47,20 @@ class ActorWorker(threading.thread):
 
             action = action_dist.sample()
             beh_logp = action_dist.log_prob(action)
+            if beh_logp.ndim > 0:
+                beh_logp = beh_logp.sum(dim=-1)
+            
             next_obs, reward, done, info = self.env.step(action.cpu().numpy())
-            next_obs = th.as_tensor(next_obs, device=self.policy.device).unsqueeze(0)
+            next_obs = th.as_tensor(next_obs, device=self.config.actor_device).unsqueeze(0)
             obs_list.append(next_obs)
             actions.append(action)
-            rewards.append(th.tensor(reward, device=self.policy.device))
-            dones.append(th.tensor(done, device=self.policy.device))
+            rewards.append(th.tensor(reward, device=self.config.actor_device))
+            dones.append(th.tensor(done, device=self.config.actor_device))
             beh_logps.append(beh_logp)
             for k, v in extra.items():
                 extras.setdefault(k, []).append(v)
             if done:
-                next_obs = th.as_tensor(self.env.reset(), device=self.policy.device).unsqueeze(0)
+                next_obs = th.as_tensor(self.env.reset(), device=self.config.actor_device).unsqueeze(0)
                 obs_list[-1] = next_obs
         to_tensor = lambda xs: th.stack(xs, dim=0)
         extras = {k: th.stack(v, dim=0) for k, v in extras.items()}
