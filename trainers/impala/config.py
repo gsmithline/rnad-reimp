@@ -14,9 +14,22 @@ class ImpalaConfig:
     actor_queue_size: int = 64
     num_actors: int = 8
     refresh_interval: int = 50_000  #env steps before we weight learner vs actor 
-    learner_device: str = "cuda"
+    # "auto" -> "cuda:0" if available else "cpu"
+    learner_device: str = "auto"
     actor_device: str = "cpu"
     checkpoint_interval: int = 10_000
 
 
-    
+    def __post_init__(self) -> None:
+        # Keep torch as a local import so config remains lightweight to import.
+        import torch as th
+
+        if self.learner_device == "auto":
+            self.learner_device = "cuda" if th.cuda.is_available() else "cpu"
+
+        # Normalize bare "cuda" to a concrete device.
+        if self.learner_device == "cuda":
+            if not th.cuda.is_available():
+                self.learner_device = "cpu"
+            else:
+                self.learner_device = "cuda:0"

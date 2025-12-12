@@ -37,7 +37,8 @@ class Learner:
 
         pg_loss = -(vtrace.pg_advantages.detach() * target_log_probs).mean()
 
-        baseline_loss = 0.5 * (values - vtrace.vs).pow(2).mean()
+        # Treat V-trace outputs as regression targets (stop-gradient).
+        baseline_loss = 0.5 * (values - vtrace.vs.detach()).pow(2).mean()
 
         entropy = self.policy.entropy(logits).mean()
        
