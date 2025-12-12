@@ -19,27 +19,33 @@ class ActorWorker(threading.Thread):
         self.env_steps = 0
     
     def _reset_env(self):
+        '''
+        this needs to be updated for the new openspiel
+        '''
         out = self.env.reset()
-        # gymnasium: (obs, info), gym: obs
         if isinstance(out, tuple) and len(out) == 2:
             obs, _info = out
             return obs
         return out
 
-    def _step_env(self, action_np):
+    def _step_env(self, action_np): 
+        '''
+        this needs to be updated for the new openspiel
+        '''
         out = self.env.step(action_np)
-        # gymnasium: (obs, reward, terminated, truncated, info)
         if isinstance(out, tuple) and len(out) == 5:
             obs, reward, terminated, truncated, info = out
             done = bool(terminated) or bool(truncated)
             return obs, reward, done, info
-        # gym: (obs, reward, done, info)
         return out
 
     def run(self):
         obs = self._reset_env()
-        # Store observations unbatched (envs=1). We add a batch dim only when
-        # calling the policy to keep learner tensors time-major [T, B, ...].
+        '''
+        store observations unbatched (envs=1). 
+        we add a batch dim only when calling the policy to keep 
+        learner tensors time-major [T, B, ...].
+        '''
         obs = th.as_tensor(obs, device=self.config.actor_device)
 
         while not self.shutdown.is_set():
@@ -67,7 +73,6 @@ class ActorWorker(threading.Thread):
 
             action = action_dist.sample()
             beh_logp = action_dist.log_prob(action)
-            # Sum factorized log-probs, then drop the (env) batch dim.
             if beh_logp.ndim > 1:
                 beh_logp = beh_logp.sum(dim=-1)
             beh_logp = beh_logp.squeeze(0)
@@ -81,7 +86,7 @@ class ActorWorker(threading.Thread):
             dones.append(th.tensor(done, device=self.config.actor_device))
             beh_logps.append(beh_logp)
             for k, v in extra.items():
-                # Policy extras are typically batched; store unbatched.
+                # the policy extras are typically batched but we store unbatched.
                 extras.setdefault(k, []).append(v.squeeze(0) if isinstance(v, th.Tensor) else v)
             if done:
                 next_obs = th.as_tensor(self._reset_env(), device=self.config.actor_device)
