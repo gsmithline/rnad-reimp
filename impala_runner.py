@@ -22,7 +22,7 @@ def build_policy_fn():
     """
     have some rnad builder here
     """
-    raise NotImplementedError("Policy factory is constructed in main() from env spaces.")
+    raise NotImplementedError("policy factory is constructed in main() from env spaces.")
 
 
 class PrintLogger:
@@ -74,7 +74,9 @@ def main():
 
 
 
-    learner_policy = policy_fn(obs_dim=obs_dim, num_actions=num_actions)
+    policy_factory = lambda: policy_fn(obs_dim=obs_dim, num_actions=num_actions)
+
+    learner_policy = policy_factory()
     param_server.update(learner_policy.state_dict())
 
     logger = PrintLogger()
@@ -84,7 +86,7 @@ def main():
         ActorWorker(
             actor_id=i,
             env_fn=env_fn,
-            policy_fn=policy_fn,
+            policy_fn=policy_factory,
             param_server=param_server,
             queue=queue,
             config=config,

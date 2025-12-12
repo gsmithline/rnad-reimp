@@ -61,8 +61,8 @@ class SimpleCategoricalMLP(nn.Module):
         observations: [T, B, obs_dim]
         '''
         h = self._encode(observations)
-        logits = self.policy_head(h)  # [T, B, A]
-        values = self.value_head(h).squeeze(-1)  # [T, B]
+        logits = self.policy_head(h) 
+        values = self.value_head(h).squeeze(-1) 
         return logits, values
 
     def log_prob(self, actions: th.Tensor, logits: th.Tensor) -> th.Tensor:
@@ -72,17 +72,17 @@ class SimpleCategoricalMLP(nn.Module):
         if actions.ndim == 3 and actions.shape[-1] == 1:
             actions = actions.squeeze(-1)
         dist = Categorical(logits=logits)
-        return dist.log_prob(actions)  # [T, B]
+        return dist.log_prob(actions) 
 
     def value(self, observations: th.Tensor) -> th.Tensor:
         '''
         observations: [B, obs_dim]
         '''
         h = self._encode(observations)
-        return self.value_head(h).squeeze(-1)  # [B]
+        return self.value_head(h).squeeze(-1) 
 
     def entropy(self, logits: th.Tensor) -> th.Tensor:
         dist = Categorical(logits=logits)
-        return dist.entropy()  # [T, B]
+        return dist.entropy() 
 
 
